@@ -18,7 +18,7 @@ Originally based of [tutumcloud/tutum-docker-mysql](https://github.com/tutumclou
 		-it --rm \
 		crobays/mysql
 
-# Create a webserver with [crobays/nginx-php](https://github.com/crobays/docker-nginx-php)
+### Create a webserver to link with [crobays/nginx-php](https://github.com/crobays/docker-nginx-php)
 
 	docker run \
 		--link mysql:db \
