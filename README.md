@@ -1,4 +1,4 @@
-ORIGINALLY BASED OF TUTUM/MYSQL, CREDITS TO THEM :D
+Originally based of [tutumcloud/tutum-docker-mysql](https://github.com/tutumcloud/tutum-docker-mysql), credits to them :D
 
 ## Run MySQL in a container on top of Ubuntu:Trusty
 
