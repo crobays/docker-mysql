@@ -21,7 +21,7 @@ VOLUME_HOME="/var/lib/mysql"
 if [[ ! -d $VOLUME_HOME/mysql ]]
 then
     echo "=> An empty or uninitialized MySQL volume is detected in $VOLUME_HOME"
-    echo "=> Installing MySQL ..."
+    echo "=> Configuring MySQL ..."
     mysql_install_db > /dev/null 2>&1
     echo "=> Done!"  
     
@@ -35,13 +35,8 @@ then
         mysql -uroot -e "status" > /dev/null 2>&1
         RET=$?
     done
-
-    if [ "$PASS" = "**Random**" ]
-    then
-        PASS="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
-    fi
     
-    echo "=> Creating MySQL user $USER with password: $PASS"
+    echo "=> Creating MySQL user $USER with password: ${PASS:0:8}..."
 
     mysql -uroot -e "CREATE USER '$USER'@'%' IDENTIFIED BY '$PASS'"
     mysql -uroot -e "GRANT ALL PRIVILEGES ON *.* TO '${USER}'@'%' WITH GRANT OPTION"
@@ -51,9 +46,8 @@ then
     echo "========================================================================"
     echo "You can now connect to this MySQL Server using:"
     echo ""
-    echo "    mysql -u$USER -p$PASS -h<host> -P<port>"
+    echo "    mysql -u$USER -p${PASS:0:8}... -h<host> -P<port>"
     echo ""
-    echo "Please remember to change the above password as soon as possible!"
     echo "MySQL user 'root' has no password but only allows local connections"
     echo "========================================================================"
 
@@ -74,21 +68,27 @@ then
 
     echo "=> Done!"
 
-    if [ $SQL_DUMP_FILE ] && [ -f "/project/$SQL_DUMP_FILE" ]
+    if [ $SQL_DUMP_FILE ]
     then
-        echo "=> Starting MySQL Server"
-        /usr/bin/mysqld_safe > /dev/null 2>&1 &
-        sleep 5
-        echo "   Started with PID $!"
+        if [ -f "/project/$SQL_DUMP_FILE" ]
+        then
+            echo "=> Starting MySQL Server"
+            /usr/bin/mysqld_safe > /dev/null 2>&1 &
+            sleep 5
+            echo "   Started with PID $!"
 
-        echo "=> Importing SQL file"
-        mysql -u"$USER" -p"$PASS" "$DATABASE" < "/project/$SQL_DUMP_FILE"
+            echo "=> Importing SQL file $SQL_DUMP_FILE. Get coffee, this can take a while..."
+            mysql -u"$USER" -p"$PASS" "$DATABASE" < "/project/$SQL_DUMP_FILE"
 
-        echo "=> Stopping MySQL Server"
-        mysqladmin -u"$USER" -p"$PASS" shutdown
+            echo "=> Stopping MySQL Server"
+            mysqladmin -u"$USER" -p"$PASS" shutdown
 
-        echo "=> Done!"
-
+            echo "=> Done!"
+        else
+            echo "=> Import file not found in /project: $SQL_DUMP_FILE"
+        fi
+    else
+        echo "=> No file given to import"
     fi
 else
     echo "=> Using an existing volume of MySQL"

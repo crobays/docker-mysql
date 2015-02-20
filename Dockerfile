@@ -17,15 +17,18 @@ RUN rm -rf /var/lib/mysql/*
 ENV TIMEZONE Etc/UTC
 ENV ENVIRONMENT prod
 ENV USER admin
-ENV PASS **Random**
+ENV PASS secret
 ENV DATABASE default
 ENV SQL_DUMP_FILE mysql-auto-import.sql
 
 # Add VOLUMEs to allow backup of config and databases
 VOLUME  ["/project"]
+WORKDIR /project
 
 # MySQL port
 EXPOSE 3306
+
+RUN echo '/sbin/my_init' > /root/.bash_history
 
 ADD /conf /conf
 
@@ -48,7 +51,8 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 #   /workspace/docker/crobays/mysql && \
 # docker run \
 # --name mysql \
-# -v /workspace/projects/duoplant/www-duoplant-nl:/project \
+# -p 3306:3306 \
+# -v /workspace/projects/userx/crane-userx-nl:/project \
 # -e ENVIRONMENT=dev \
 # -e TIMEZONE=Europe/Amsterdam \
 # -it --rm \
