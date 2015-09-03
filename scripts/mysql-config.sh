@@ -1,11 +1,26 @@
 #!/bin/bash
+
 mkdir -p /etc/mysql/conf.d
-mycnf="/conf/my.cnf"
-if [ -f "/project/my.cnf" ]
+
+if [ "${SQL_DATA_DIR:0:1}" != "/" ]
 then
-	mycnf="/project/my.cnf"
+    SQL_DATA_DIR="/project/$SQL_DATA_DIR"
 fi
-cp -f "$mycnf" /etc/mysql/conf.d/my.cnf
+
+if [ -f "/project/mysql.cnf" ]
+then
+    cp -f "/project/mysql.cnf" /etc/mysql/conf.d/my.cnf
+else
+    echo "[mysqld]" > /etc/mysql/conf.d/my.cnf
+    echo "bind-address=0.0.0.0" >> /etc/mysql/conf.d/my.cnf
+    if [ "$SQL_DATA_DIR" != "/var/lib/mysql" ]
+    then
+        echo "user=root" >> /etc/mysql/conf.d/my.cnf
+        echo "datadir=$SQL_DATA_DIR" >> /etc/mysql/conf.d/my.cnf
+    fi
+fi
+VOLUME_HOME="$SQL_DATA_DIR"
+cat /etc/mysql/conf.d/my.cnf
 
 charset="/conf/mysqld-charset.cnf"
 if [ -f "/project/mysqld-charset.cnf" ]
@@ -16,26 +31,28 @@ cp -f "$charset" /etc/mysql/mysqld_charset.cnf
 
 mkdir -p /var/log/mysql
 
-VOLUME_HOME="/var/lib/mysql"
-
-if [[ ! -d $VOLUME_HOME/mysql ]]
+if [[ ! -d $SQL_DATA_DIR/mysql ]]
 then
-    echo "=> An empty or uninitialized MySQL volume is detected in $VOLUME_HOME"
+    echo "=> An empty or uninitialized MySQL volume is detected in $SQL_DATA_DIR"
     echo "=> Configuring MySQL ..."
     mysql_install_db > /dev/null 2>&1
-    echo "=> Done!"  
-    
+    echo "=> Done!"
+    # chown root:root $SQL_DATA_DIR
     /usr/bin/mysqld_safe > /dev/null 2>&1 &
 
-    RET=1
-    while [[ RET -ne 0 ]]
-    do
-        echo "=> Waiting for confirmation of MySQL service startup"
+    # Time out in 1 minute
+    LOOP_LIMIT=13
+    for (( i=0 ; ; i++ )); do
+        if [ ${i} -eq ${LOOP_LIMIT} ]; then
+            echo "Time out. Error log is shown as below:"
+            tail -n 100 ${LOG}
+            exit 1
+        fi
+        echo "=> Waiting for confirmation of MySQL service startup, trying ${i}/${LOOP_LIMIT} ..."
         sleep 5
-        mysql -uroot -e "status" > /dev/null 2>&1
-        RET=$?
+        mysql -uroot -e "status" > /dev/null 2>&1 && break
     done
-    
+
     echo "=> Creating MySQL user $USER with password: ${PASS:0:8}..."
 
     mysql -uroot -e "CREATE USER '$USER'@'%' IDENTIFIED BY '$PASS'"
@@ -70,7 +87,12 @@ then
 
     if [ $SQL_DUMP_FILE ]
     then
-        if [ -f "/project/$SQL_DUMP_FILE" ]
+        if [ "${SQL_DUMP_FILE:0:1}" != "/" ]
+        then
+            SQL_DUMP_FILE="/project/$SQL_DUMP_FILE"
+        fi
+
+        if [ -f "$SQL_DUMP_FILE" ]
         then
             echo "=> Starting MySQL Server"
             /usr/bin/mysqld_safe > /dev/null 2>&1 &
@@ -78,14 +100,14 @@ then
             echo "   Started with PID $!"
 
             echo "=> Importing SQL file $SQL_DUMP_FILE. Get coffee, this can take a while..."
-            mysql -u"$USER" -p"$PASS" "$DATABASE" < "/project/$SQL_DUMP_FILE"
+            mysql -u"$USER" -p"$PASS" "$DATABASE" < "$SQL_DUMP_FILE"
 
             echo "=> Stopping MySQL Server"
             mysqladmin -u"$USER" -p"$PASS" shutdown
 
             echo "=> Done!"
         else
-            echo "=> Import file not found in /project: $SQL_DUMP_FILE"
+            echo "=> ERROR: Import file not found: $SQL_DUMP_FILE"
         fi
     else
         echo "=> No file given to import"
@@ -93,4 +115,3 @@ then
 else
     echo "=> Using an existing volume of MySQL"
 fi
-
