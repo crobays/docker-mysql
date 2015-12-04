@@ -1,5 +1,9 @@
 #!/bin/bash
 
+DB_NAME=${DATABASE:-$DB_NAME}
+DB_USER=${USER:-$DB_USER}
+DB_PASS=${PASS:-$DB_PASS}
+
 mkdir -p /etc/mysql/conf.d
 
 if [ "${SQL_DATA_DIR:0:1}" != "/" ]
@@ -52,18 +56,16 @@ then
         sleep 5
         mysql -uroot -e "status" > /dev/null 2>&1 && break
     done
-
-    echo "=> Creating MySQL user $USER with password: ${PASS:0:8}..."
-
-    mysql -uroot -e "CREATE USER '$USER'@'%' IDENTIFIED BY '$PASS'"
-    mysql -uroot -e "GRANT ALL PRIVILEGES ON *.* TO '${USER}'@'%' WITH GRANT OPTION"
+    echo "=> Creating MySQL user $DB_USER with password: ${DB_PASS:0:8}..."
+    mysql -uroot -e "CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS'"
+    mysql -uroot -e "GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'%' WITH GRANT OPTION"
 
     echo "=> Done!"
 
     echo "========================================================================"
     echo "You can now connect to this MySQL Server using:"
     echo ""
-    echo "    mysql -u$USER -p${PASS:0:8}... -h<host> -P<port>"
+    echo "    mysql -u$DB_USER -p${DB_PASS:0:8}... -h<host> -P<port>"
     echo ""
     echo "MySQL user 'root' has no password but only allows local connections"
     echo "========================================================================"
@@ -72,12 +74,12 @@ then
 
     /usr/bin/mysqld_safe > /dev/null 2>&1 &
 
-    echo "=> Creating database $DATABASE"
+    echo "=> Creating database $DB_NAME"
     RET=1
     while [[ RET -ne 0 ]]
     do
         sleep 5
-        mysql -uroot -e "CREATE DATABASE \`$DATABASE\`"
+        mysql -uroot -e "CREATE DATABASE \`$DB_NAME\`"
         RET=$?
     done
 
@@ -100,10 +102,9 @@ then
             echo "   Started with PID $!"
 
             echo "=> Importing SQL file $SQL_DUMP_FILE. Get coffee, this can take a while..."
-            mysql -u"$USER" -p"$PASS" "$DATABASE" < "$SQL_DUMP_FILE"
-
+            mysql -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < "$SQL_DUMP_FILE"
             echo "=> Stopping MySQL Server"
-            mysqladmin -u"$USER" -p"$PASS" shutdown
+            mysqladmin -u"$DB_USER" -p"$DB_PASS" shutdown
 
             echo "=> Done!"
         else

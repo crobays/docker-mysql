@@ -14,12 +14,12 @@ RUN apt-get -y install mysql-server pwgen
 RUN rm -rf /var/lib/mysql/*
 
 # Exposed ENV
-ENV TIMEZONE Etc/UTC
-ENV ENVIRONMENT prod
-ENV USER admin
-ENV PASS secret
-ENV DATABASE default
-ENV SQL_DUMP_FILE mysql-auto-import.sql
+ENV TIMEZONE=Etc/UTC \
+    ENVIRONMENT=prod \
+    DB_USER=admin \
+    DB_PASS=secret \
+    DB_NAME=default \
+    SQL_DUMP_FILE=mysql-auto-import.sql
 
 # Add VOLUMEs to allow backup of config and databases
 VOLUME  ["/project"]
