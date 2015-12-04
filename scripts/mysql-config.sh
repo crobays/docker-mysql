@@ -1,15 +1,20 @@
 #!/bin/bash
+set -e
+[ $DEBUG ] && set -x
 
 DB_NAME=${DATABASE:-$DB_NAME}
 DB_USER=${USER:-$DB_USER}
 DB_PASS=${PASS:-$DB_PASS}
-
 mkdir -p /etc/mysql/conf.d
 
-if [ "${SQL_DATA_DIR:0:1}" != "/" ]
+if [ "${DATA_DIR:0:1}" != "/" ]
 then
-    SQL_DATA_DIR="/project/$SQL_DATA_DIR"
+    DATA_DIR="/project/$DATA_DIR"
 fi
+
+mkdir -p "$DATA_DIR"
+
+MYSQL_DIR="$DATA_DIR/mysql"
 
 if [ -f "/project/mysql.cnf" ]
 then
@@ -17,13 +22,13 @@ then
 else
     echo "[mysqld]" > /etc/mysql/conf.d/my.cnf
     echo "bind-address=0.0.0.0" >> /etc/mysql/conf.d/my.cnf
-    if [ "$SQL_DATA_DIR" != "/var/lib/mysql" ]
+    if [ "$MYSQL_DIR" != "/var/lib/mysql" ]
     then
         echo "user=root" >> /etc/mysql/conf.d/my.cnf
-        echo "datadir=$SQL_DATA_DIR" >> /etc/mysql/conf.d/my.cnf
+        echo "datadir=$MYSQL_DIR" >> /etc/mysql/conf.d/my.cnf
     fi
 fi
-VOLUME_HOME="$SQL_DATA_DIR"
+
 cat /etc/mysql/conf.d/my.cnf
 
 charset="/conf/mysqld-charset.cnf"
@@ -32,16 +37,16 @@ then
     charset="/project/mysqld-charset.cnf"
 fi
 cp -f "$charset" /etc/mysql/mysqld_charset.cnf
-
 mkdir -p /var/log/mysql
 
-if [[ ! -d $SQL_DATA_DIR/mysql ]]
+
+if [[ ! -d $MYSQL_DIR ]]
 then
-    echo "=> An empty or uninitialized MySQL volume is detected in $SQL_DATA_DIR"
+    echo "=> An empty or uninitialized MySQL volume is detected in $MYSQL_DIR"
     echo "=> Configuring MySQL ..."
     mysql_install_db > /dev/null 2>&1
     echo "=> Done!"
-    # chown root:root $SQL_DATA_DIR
+    # chown root:root $DATA_DIR
     /usr/bin/mysqld_safe > /dev/null 2>&1 &
 
     # Time out in 1 minute

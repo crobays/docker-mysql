@@ -19,7 +19,8 @@ ENV TIMEZONE=Etc/UTC \
     DB_USER=admin \
     DB_PASS=secret \
     DB_NAME=default \
-    SQL_DUMP_FILE=mysql-auto-import.sql
+    SQL_DUMP_FILE=mysql-auto-import.sql \
+    DATA_DIR=data
 
 # Add VOLUMEs to allow backup of config and databases
 VOLUME  ["/project"]
